@@ -8,21 +8,33 @@ const { join } = require('path');
 const { loadStyle, unloadStyle } = require('./util');
 const cache = { _guilds: {} };
 
+const badgeData = require('./userBadgeData.json')
+
 module.exports = class CustomBadges extends Plugin {
   async startPlugin() {
     const styleId = loadStyle(join(__dirname, 'style.css'));
-	this.Heading = getModule(['Heading'], false).Heading;
-	this.title = getModule(['title', 'body'], false).title;
     await this.injectUsers();
     await this.injectGuilds();
   }
 
-  async injectUsers() {
+  
+  getBadges(id) {
 
-	console.log(cache)
+    const userBadgeData = badgeData[id];
+
+    if(!userBadgeData) {
+      delete cache[id];
+      return {};
+    }
+
+    return userBadgeData.badges;
+  }
+
+  async injectUsers() {
     const UserProfileBadgeList = getAllModules(
       (m) => m.default?.displayName === "UserProfileBadgeList"
-    )[1]; // Discord have two identical components but only 2nd is actually used?
+    )[1];
+
     inject(
       "pc-badges-forked-users",
       UserProfileBadgeList,
@@ -30,31 +42,17 @@ module.exports = class CustomBadges extends Plugin {
       ([props], res) => {
         const [badges, setBadges] = React.useState(null);
         React.useEffect(() => {
-			cache[props.user.id] = {
-				"developer": true,
-					"staff":true,
-					"support":true,
-					"contributor":true,
-					"translator":true,
-					"hunter":true,
-					"early":true,
-					"custom": {
-						"color":null,
-						"icon":"https://powercord.dev/api/v2/hibiscus/7289da.svg",
-						"name":"Powercord Cutie"
-					}
-			}
+          if(!cache[props.user.id]) {
+            const receivedBadges = this.getBadges(props.user.id)
+            cache[props.user.id] = receivedBadges;
+          }
 
-          setBadges(cache[props.user.id])
+          setBadges(cache[props.user.id], function() {});
         }, []);
 
         if (!badges) {
-			console.log("no badges in cache at the moment", badges)
-			console.log(res)
           return res;
         }
-
-		console.log(badges)
 
         const render = (Component, key, props = {}) => (React.createElement(Component, {
 			  key: `pc-${key}`,
@@ -63,7 +61,6 @@ module.exports = class CustomBadges extends Plugin {
 			})
 		);
 
-		render(Badges.Custom, "cutie", badges.custom)
 
         if (badges.custom && badges.custom.name && badges.custom.icon) {
           res.props.children.push(
@@ -71,7 +68,6 @@ module.exports = class CustomBadges extends Plugin {
           );
         }
         if (badges.developer) {
-			console.log("trying to render developer badge")
           res.props.children.push(render(Badges.Developer, "developer"));
         }
         if (badges.staff) {
@@ -130,16 +126,11 @@ module.exports = class CustomBadges extends Plugin {
 	  return res;
 	});
   
-	//const baseUrl = powercord.settings.get('backendURL', WEBSITE);
 
 	cache._guilds = {
 		"1014837057333497917": {
-			"name":"Kampelis",
-			"icon":"https://cdn.discordapp.com/emojis/694979272070266970.png"
-		},
-		"995705794312028260": {
-			"name":"ARCH",
-			"icon":"https://cdn.discordapp.com/attachments/772943180160958514/773261485790199809/OKAttic.png"
+			"name":"Kietas esi",
+			"icon":"https://cdn.discordapp.com/emojis/1022884736550584450.gif?size=96&quality=lossless"
 		}
 	}
   }
